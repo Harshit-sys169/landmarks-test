@@ -1,0 +1,39 @@
+---
+description: 
+alwaysApply: true
+---
+
+# Project Coding Standards: React Native & Expo (Managed Workflow)
+
+## Tech Stack & Core Frameworks
+- **Framework:** React Native with Expo (Managed Workflow, Expo Router).
+- **Language:** TypeScript exclusively with strict type checking.
+- **Styling:** NativeWind (Tailwind CSS for React Native).
+- **Validation:** Zod for runtime and API data validation.
+- **Backend/Auth:** Supabase (JS Client).
+
+## Code Style & Syntax
+- Use functional components with arrow functions (`const MyComponent = () => {}`).
+- Explicitly define TypeScript types or interfaces for all component props, state, and API responses.
+- Use path aliases (e.g., `@/components/`, `@/hooks/`) instead of relative paths where available.
+- Prioritize clean, self-documenting code over dense inline comments.
+
+## UI & Styling (NativeWind)
+- Use standard Expo/React Native components (`View`, `Text`, `TouchableOpacity`, `ScrollView`, `FlatList`).
+- Apply styling strictly via the `className` attribute using NativeWind utility classes (e.g., `className="flex-1 p-4 bg-white"`).
+- Avoid inline `style={{}}` objects unless handling dynamic calculations (like animated values).
+- Ensure all text elements are wrapped inside a `<Text>` component to prevent rendering crashes.
+
+## State Management & Navigation
+- **Navigation:** Use Expo Router (File-based routing). Utilize `useRouter` and `<Link>` components for transitions.
+- **State:** Use React Hooks (`useState`, `useContext`, `useMemo`, `useCallback`) for local state. 
+- Keep components optimized: Memoize expensive calculations with `useMemo` and functions with `useCallback` when passing to children.
+
+## Error Handling & Security
+- **Runtime Validation:** Use Zod schemas to parse and validate incoming data from Supabase or user inputs before processing.
+- **Input Sanitization:** Explicitly sanitize and trim all text user inputs to prevent injection attacks or layout breakage.
+- Always implement `try/catch` blocks around asynchronous API operations (like Supabase authentication or fetching records) and handle errors gracefully with user-facing alerts.
+
+## Key Conventions
+- Never install third-party packages unless explicitly instructed. Always look to see if Expo has a built-in API first (e.g., `expo-secure-store`, `expo-image`).
+- Write high-performance, mobile-optimized lists using `FlatList` or `FlashList` instead of mapping arrays inside a `ScrollView`.
