@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "landmarks-test",
-    "slug": "landmarks-test",
+    "name": "Landmarks",
+    "slug": "landmarks",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "landmarkstest",
+    "scheme": "landmarks",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon"
