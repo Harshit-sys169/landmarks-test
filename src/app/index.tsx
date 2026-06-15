@@ -1,9 +1,13 @@
-import { Text, View, StyleSheet } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
-export default function Index() {
+export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text>Edit src/app/index.tsx to edit this screen.</Text>
+      <Text style={styles.title}>Landmarks</Text>
+
+      <Text style={styles.subtitle}>
+        Discover and share amazing places
+      </Text>
     </View>
   );
 }
@@ -11,7 +15,19 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+
+  subtitle: {
+    fontSize: 16,
+    textAlign: "center",
   },
 });
