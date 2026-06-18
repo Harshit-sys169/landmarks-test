@@ -8,6 +8,7 @@ export default function HomeScreen() {
       <Typography variant="h1" style={styles.title}>
         Landmarks
       </Typography>
+
       <Typography variant="body" style={styles.subtitle}>
         Discover and share amazing places
       </Typography>
@@ -25,13 +26,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
   },
+
   title: {
     textAlign: "center",
   },
+
   subtitle: {
     textAlign: "center",
     marginTop: 12,
   },
+
   spacer: {
     height: 20,
   },

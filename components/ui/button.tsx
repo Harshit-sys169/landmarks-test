@@ -6,19 +6,27 @@ type Props = {
   variant?: "default" | "secondary";
 };
 
-export function Button({ title, onPress, variant = "default" }: Props) {
+export function Button({
+  title,
+  onPress,
+  variant = "default",
+}: Props) {
   return (
     <Pressable
       onPress={onPress}
       style={[
         styles.base,
-        variant === "secondary" ? styles.secondary : styles.default,
+        variant === "secondary"
+          ? styles.secondary
+          : styles.default,
       ]}
     >
       <Text
         style={[
           styles.text,
-          variant === "secondary" ? styles.secondaryText : styles.defaultText,
+          variant === "secondary"
+            ? styles.secondaryText
+            : styles.defaultText,
         ]}
       >
         {title}
@@ -35,19 +43,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: "100%",
   },
+
   default: {
     backgroundColor: "#111827",
   },
+
   secondary: {
     backgroundColor: "#E5E7EB",
   },
+
   text: {
     fontSize: 16,
     fontWeight: "600",
   },
+
   defaultText: {
     color: "#FFFFFF",
   },
+
   secondaryText: {
     color: "#111827",
   },

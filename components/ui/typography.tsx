@@ -1,18 +1,31 @@
-h1: {
-  fontSize: 48,
-  fontWeight: "700",
-},
+import { Text, TextProps } from "react-native";
 
-h2: {
-  fontSize: 32,
-  fontWeight: "700",
-},
+type Props = TextProps & {
+  variant?: "h1" | "body";
+};
 
-h3: {
-  fontSize: 24,
-  fontWeight: "600",
-},
-
-body: {
-  fontSize: 16,
+export function Typography({
+  variant = "body",
+  style,
+  children,
+  ...props
+}: Props) {
+  return (
+    <Text
+      {...props}
+      style={[
+        variant === "h1"
+          ? {
+              fontSize: 32,
+              fontWeight: "700",
+            }
+          : {
+              fontSize: 16,
+            },
+        style,
+      ]}
+    >
+      {children}
+    </Text>
+  );
 }
