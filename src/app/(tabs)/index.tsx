@@ -1,10 +1,20 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Button } from "../../../components/ui/button";
+import { Typography } from "../../../components/ui/typography";
 
 export default function HomeScreen() {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Home</Text>
-      <Text style={styles.subtitle}>Landmarks app shell</Text>
+      <Typography variant="h1" style={styles.title}>
+        Landmarks
+      </Typography>
+      <Typography variant="body" style={styles.subtitle}>
+        Discover and share amazing places
+      </Typography>
+
+      <View style={styles.spacer} />
+
+      <Button title="Create Post" onPress={() => {}} />
     </View>
   );
 }
@@ -13,16 +23,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
     padding: 24,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "700",
-    marginBottom: 12,
+    textAlign: "center",
   },
   subtitle: {
-    fontSize: 16,
     textAlign: "center",
+    marginTop: 12,
+  },
+  spacer: {
+    height: 20,
   },
 });

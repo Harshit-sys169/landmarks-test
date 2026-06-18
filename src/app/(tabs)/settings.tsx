@@ -1,10 +1,42 @@
-import { StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { Button } from "../../../components/ui/button";
+import { Input } from "../../../components/ui/input";
+import { Typography } from "../../../components/ui/typography";
 
 export default function SettingsScreen() {
+  const [displayName, setDisplayName] = useState("");
+  const [bio, setBio] = useState("");
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      <Text style={styles.subtitle}>Placeholder settings screen</Text>
+      <Typography variant="h1" style={styles.title}>
+        Settings
+      </Typography>
+
+      <Typography variant="body" style={styles.label}>
+        Display name
+      </Typography>
+      <Input
+        value={displayName}
+        onChangeText={setDisplayName}
+        placeholder="Enter display name"
+      />
+
+      <Typography variant="body" style={styles.label}>
+        Bio
+      </Typography>
+      <Input
+        value={bio}
+        onChangeText={setBio}
+        placeholder="Enter bio"
+      />
+
+      <Button title="Save changes" onPress={() => {}} />
+
+      <View style={styles.spacer} />
+
+      <Button title="Sign out" variant="secondary" onPress={() => {}} />
     </View>
   );
 }
@@ -12,17 +44,18 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     padding: 24,
+    justifyContent: "center",
+    gap: 12,
   },
   title: {
-    fontSize: 32,
-    fontWeight: "700",
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    textAlign: "center",
+  label: {
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  spacer: {
+    height: 8,
   },
 });
