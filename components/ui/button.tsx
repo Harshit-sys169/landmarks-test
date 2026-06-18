@@ -29,7 +29,7 @@ export function Button({ title, onPress, variant = "default" }: Props) {
 
 const styles = StyleSheet.create({
   base: {
-    height: 52,
+    height: 56,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
