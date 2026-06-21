@@ -1,3 +1,5 @@
+import { decode } from "base64-arraybuffer";
+import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
@@ -31,11 +33,15 @@ export default function SettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
       if (!profileId) {
-        Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+        Alert.alert(
+          "Missing profile id",
+          "Set EXPO_PUBLIC_PROFILE_ID in .env.local",
+        );
         setLoading(false);
         return;
       }
@@ -75,13 +81,20 @@ export default function SettingsScreen() {
 
   const pickAvatar = async () => {
     if (!profileId) {
-      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+      Alert.alert(
+        "Missing profile id",
+        "Set EXPO_PUBLIC_PROFILE_ID in .env.local",
+      );
       return;
     }
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
     if (!permission.granted) {
-      Alert.alert("Permission required", "Allow photo library access to choose an avatar.");
+      Alert.alert(
+        "Permission required",
+        "Allow photo library access to choose an avatar.",
+      );
       return;
     }
 
@@ -89,7 +102,7 @@ export default function SettingsScreen() {
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 0.5,
+      quality: 0.7,
     });
 
     if (result.canceled) return;
@@ -97,38 +110,48 @@ export default function SettingsScreen() {
     const asset = result.assets[0];
     if (!asset?.uri) return;
 
-    const extension = asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
-    const filePath = `${profileId}/${Date.now()}.${extension}`;
+    try {
+      setUploadingAvatar(true);
 
-    const formData = new FormData();
+      const extension =
+        asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
 
-    formData.append("file", {
-      uri: asset.uri,
-      name: `avatar.${extension}`,
-      type: asset.mimeType ?? "image/jpeg",
-    } as any);
+      const filePath = `${profileId}/${Date.now()}.${extension}`;
 
-    Alert.alert(
-      "Avatar Selected",
-      "Image picker is working. Upload implementation will be added next."
-    );
+      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
 
-    return;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, decode(base64), {
+          contentType: asset.mimeType ?? "image/jpeg",
+          upsert: true,
+        });
 
-    if (uploadError) {
-      Alert.alert("Upload failed", uploadError.message);
-      return;
+      if (uploadError) {
+        Alert.alert("Upload failed", uploadError.message);
+        return;
+      }
+
+      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+      setAvatarStorageId(filePath);
+      setAvatarUrl(data.publicUrl);
+      Alert.alert("Success", "Avatar updated successfully.");
+    } catch (error: any) {
+      Alert.alert("Avatar error", error?.message ?? String(error));
+    } finally {
+      setUploadingAvatar(false);
     }
-
-    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-    setAvatarStorageId(filePath);
-    setAvatarUrl(data.publicUrl);
   };
 
   const saveProfile = async () => {
     if (!profileId) {
-      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+      Alert.alert(
+        "Missing profile id",
+        "Set EXPO_PUBLIC_PROFILE_ID in .env.local",
+      );
       return;
     }
 
@@ -191,7 +214,9 @@ export default function SettingsScreen() {
           <Image source={{ uri: avatarUrl }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Typography variant="body">Tap to add avatar</Typography>
+            <Typography variant="body">
+              {uploadingAvatar ? "Uploading..." : "Tap to add avatar"}
+            </Typography>
           </View>
         )}
       </Pressable>
@@ -271,6 +296,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
+    padding: 8,
   },
   bioInput: {
     height: 100,
