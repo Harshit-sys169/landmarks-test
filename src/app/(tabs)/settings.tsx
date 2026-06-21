@@ -1,5 +1,12 @@
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
-import { Alert, Image, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  Image,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -20,6 +27,7 @@ export default function SettingsScreen() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
+  const [avatarStorageId, setAvatarStorageId] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,10 +35,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     const loadProfile = async () => {
       if (!profileId) {
-        Alert.alert(
-          "Missing profile id",
-          "Set EXPO_PUBLIC_PROFILE_ID in .env.local",
-        );
+        Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
         setLoading(false);
         return;
       }
@@ -39,7 +44,7 @@ export default function SettingsScreen() {
         .from("profiles")
         .select("id, username, display_name, bio, avatar_storage_id")
         .eq("id", profileId)
-        .single();
+        .single<ProfileRow>();
 
       if (error) {
         Alert.alert("Error", error.message);
@@ -47,16 +52,15 @@ export default function SettingsScreen() {
         return;
       }
 
-      const profile = data as ProfileRow;
+      setDisplayName(data.display_name ?? "");
+      setUsername(data.username ?? "");
+      setBio(data.bio ?? "");
+      setAvatarStorageId(data.avatar_storage_id ?? null);
 
-      setDisplayName(profile.display_name ?? "");
-      setUsername(profile.username ?? "");
-      setBio(profile.bio ?? "");
-
-      if (profile.avatar_storage_id) {
+      if (data.avatar_storage_id) {
         const { data: publicData } = supabase.storage
           .from("avatars")
-          .getPublicUrl(profile.avatar_storage_id);
+          .getPublicUrl(data.avatar_storage_id);
 
         setAvatarUrl(publicData.publicUrl);
       } else {
@@ -69,12 +73,62 @@ export default function SettingsScreen() {
     void loadProfile();
   }, []);
 
+  const pickAvatar = async () => {
+    if (!profileId) {
+      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert("Permission required", "Allow photo library access to choose an avatar.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    if (!asset?.uri) return;
+
+    const extension = asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
+    const filePath = `${profileId}/${Date.now()}.${extension}`;
+
+    const formData = new FormData();
+
+    formData.append("file", {
+      uri: asset.uri,
+      name: `avatar.${extension}`,
+      type: asset.mimeType ?? "image/jpeg",
+    } as any);
+
+    Alert.alert(
+      "Avatar Selected",
+      "Image picker is working. Upload implementation will be added next."
+    );
+
+    return;
+
+    if (uploadError) {
+      Alert.alert("Upload failed", uploadError.message);
+      return;
+    }
+
+    const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
+
+    setAvatarStorageId(filePath);
+    setAvatarUrl(data.publicUrl);
+  };
+
   const saveProfile = async () => {
     if (!profileId) {
-      Alert.alert(
-        "Missing profile id",
-        "Set EXPO_PUBLIC_PROFILE_ID in .env.local",
-      );
+      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
       return;
     }
 
@@ -91,6 +145,7 @@ export default function SettingsScreen() {
         display_name: displayName.trim(),
         username: username.trim() || null,
         bio: bio.trim() || null,
+        avatar_storage_id: avatarStorageId,
         updated_at: new Date().toISOString(),
       })
       .eq("id", profileId);
@@ -131,13 +186,15 @@ export default function SettingsScreen() {
         Settings
       </Typography>
 
-      {avatarUrl ? (
-        <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-      ) : (
-        <View style={styles.avatarPlaceholder}>
-          <Typography variant="body">No avatar</Typography>
-        </View>
-      )}
+      <Pressable onPress={pickAvatar} style={styles.avatarWrap}>
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+        ) : (
+          <View style={styles.avatarPlaceholder}>
+            <Typography variant="body">Tap to add avatar</Typography>
+          </View>
+        )}
+      </Pressable>
 
       <Typography variant="body" style={styles.label}>
         Display name
@@ -196,12 +253,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 4,
   },
+  avatarWrap: {
+    alignSelf: "center",
+    marginBottom: 12,
+  },
   avatar: {
     width: 96,
     height: 96,
     borderRadius: 48,
-    alignSelf: "center",
-    marginBottom: 12,
   },
   avatarPlaceholder: {
     width: 96,
@@ -212,8 +271,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
-    alignSelf: "center",
-    marginBottom: 12,
   },
   bioInput: {
     height: 100,

@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { StyleSheet, View } from "react-native";
 import { Button } from "../../../components/ui/button";
 import { Typography } from "../../../components/ui/typography";
@@ -15,7 +16,10 @@ export default function HomeScreen() {
 
       <View style={styles.spacer} />
 
-      <Button title="Create Post" onPress={() => {}} />
+      <Button
+        title="Create Post"
+        onPress={() => router.push("/create-post")}
+      />
     </View>
   );
 }
