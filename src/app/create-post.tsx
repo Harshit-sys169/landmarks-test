@@ -2,14 +2,18 @@ import { decode } from "base64-arraybuffer";
 import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { Alert, Image, StyleSheet, View } from "react-native";
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  View,
+} from "react-native";
 
+import { ensureProfile } from "../../lib/profile";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Typography } from "../../components/ui/typography";
 import { supabase } from "../../lib/supabase";
-
-const profileId = process.env.EXPO_PUBLIC_PROFILE_ID;
 
 export default function CreatePostScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -18,18 +22,20 @@ export default function CreatePostScreen() {
   const [uploading, setUploading] = useState(false);
 
   const selectImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
       Alert.alert("Permission Required", "Please allow photo access.");
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
+    const result =
+      await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
 
     if (result.canceled) return;
 
@@ -47,27 +53,34 @@ export default function CreatePostScreen() {
       return;
     }
 
-    if (!profileId) {
-      Alert.alert("Missing profile id");
-      return;
-    }
-
     try {
       setUploading(true);
-      const { data: authData } = await supabase.auth.getUser();
 
-      const base64 = await FileSystem.readAsStringAsync(imageUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
+      const profileId = await ensureProfile();
+      if (!profileId) {
+        Alert.alert("Not signed in", "Please sign in again.");
+        return;
+      }
+
+      const base64 = await FileSystem.readAsStringAsync(
+        imageUri,
+        {
+          encoding: FileSystem.EncodingType.Base64,
+        }
+      );
 
       const filePath = `${profileId}/${Date.now()}.jpg`;
 
       const { error: uploadError } = await supabase.storage
         .from("post-images")
-        .upload(filePath, decode(base64), {
-          contentType: "image/jpeg",
-          upsert: true,
-        });
+        .upload(
+          filePath,
+          decode(base64),
+          {
+            contentType: "image/jpeg",
+            upsert: true,
+          }
+        );
 
       if (uploadError) {
         Alert.alert("Upload failed", uploadError.message);
@@ -94,9 +107,7 @@ export default function CreatePostScreen() {
       setParkName("");
       setCaption("");
     } catch (error: any) {
-      console.log("CREATE_POST_ERROR", error);
-
-      Alert.alert("Error", JSON.stringify(error, null, 2));
+      Alert.alert("Error", error?.message ?? String(error));
     } finally {
       setUploading(false);
     }
@@ -104,15 +115,25 @@ export default function CreatePostScreen() {
 
   return (
     <View style={styles.container}>
-      <Typography variant="h1">Create Post</Typography>
+      <Typography variant="h1">
+        Create Post
+      </Typography>
 
       {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.preview} />
+        <Image
+          source={{ uri: imageUri }}
+          style={styles.preview}
+        />
       ) : (
-        <Typography variant="body">No image selected</Typography>
+        <Typography variant="body">
+          No image selected
+        </Typography>
       )}
 
-      <Button title="Select Image" onPress={selectImage} />
+      <Button
+        title="Select Image"
+        onPress={selectImage}
+      />
 
       <Input
         value={parkName}
@@ -120,10 +141,10 @@ export default function CreatePostScreen() {
         placeholder="Landmark name"
       />
 
-      <Input 
-        value={caption} 
-        onChangeText={setCaption} 
-        placeholder="Caption" 
+      <Input
+        value={caption}
+        onChangeText={setCaption}
+        placeholder="Caption"
       />
 
       <Button
@@ -140,6 +161,7 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
+
   preview: {
     width: "100%",
     height: 250,
