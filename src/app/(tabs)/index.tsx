@@ -1,46 +1,95 @@
-import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
-import { Button } from "../../../components/ui/button";
+import { useEffect, useState } from "react";
+import {
+  FlatList,
+  Image,
+  StyleSheet,
+  View,
+} from "react-native";
+
 import { Typography } from "../../../components/ui/typography";
+import { supabase } from "../../../lib/supabase";
+
+type Post = {
+  id: string;
+  park_name: string;
+  caption: string | null;
+  image_storage_id: string;
+};
 
 export default function HomeScreen() {
+  const [posts, setPosts] = useState<Post[]>([]);
+
+  useEffect(() => {
+    loadPosts();
+  }, []);
+
+  const loadPosts = async () => {
+    const { data, error } = await supabase
+      .from("posts")
+      .select("*")
+      .order("created_at", {
+        ascending: false,
+      });
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    setPosts(data ?? []);
+  };
+
+  const renderItem = ({ item }: { item: Post }) => {
+    const imageUrl =
+      supabase.storage
+        .from("post-images")
+        .getPublicUrl(item.image_storage_id)
+        .data.publicUrl;
+
+    return (
+      <View style={styles.card}>
+        <Image
+          source={{ uri: imageUrl }}
+          style={styles.image}
+        />
+
+        <Typography variant="h3">
+          {item.park_name}
+        </Typography>
+
+        {item.caption ? (
+          <Typography variant="body">
+            {item.caption}
+          </Typography>
+        ) : null}
+      </View>
+    );
+  };
+
   return (
-    <View style={styles.container}>
-      <Typography variant="h1" style={styles.title}>
-        Landmarks
-      </Typography>
-
-      <Typography variant="body" style={styles.subtitle}>
-        Discover and share amazing places
-      </Typography>
-
-      <View style={styles.spacer} />
-
-      <Button
-        title="Create Post"
-        onPress={() => router.push("/create-post")}
-      />
-    </View>
+    <FlatList
+      data={posts}
+      keyExtractor={(item) => item.id}
+      renderItem={renderItem}
+      contentContainerStyle={styles.container}
+    />
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    justifyContent: "center",
-    padding: 24,
+    padding: 16,
+    gap: 16,
   },
 
-  title: {
-    textAlign: "center",
+  card: {
+    gap: 10,
+    marginBottom: 24,
   },
 
-  subtitle: {
-    textAlign: "center",
-    marginTop: 12,
-  },
-
-  spacer: {
-    height: 20,
+  image: {
+    width: "100%",
+    height: 250,
+    borderRadius: 12,
   },
 });
