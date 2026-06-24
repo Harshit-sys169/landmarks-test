@@ -13,6 +13,11 @@ export default function SignInScreen() {
   const [loading, setLoading] = useState(false);
 
   const signIn = async () => {
+    if (!email.trim() || !password) {
+      Alert.alert("Missing details", "Enter email and password.");
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -33,10 +38,32 @@ export default function SignInScreen() {
   return (
     <View style={styles.container}>
       <Typography variant="h1">Sign In</Typography>
-      <Input placeholder="Email" value={email} onChangeText={setEmail} />
-      <Input placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry />
-      <Button title={loading ? "Signing in..." : "Sign In"} onPress={signIn} />
-      <Button title="Go to Sign Up" variant="secondary" onPress={() => router.push("/(auth)/sign-up")} />
+
+      <Input
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+        keyboardType="email-address"
+      />
+
+      <Input
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+
+      <Button
+        title={loading ? "Signing in..." : "Sign In"}
+        onPress={signIn}
+      />
+
+      <Button
+        title="Go to Sign Up"
+        variant="secondary"
+        onPress={() => router.push("/(auth)/sign-up")}
+      />
     </View>
   );
 }

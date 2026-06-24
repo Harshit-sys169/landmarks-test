@@ -1,7 +1,4 @@
-import { decode } from "base64-arraybuffer";
-import * as FileSystem from "expo-file-system/legacy";
 import * as ImagePicker from "expo-image-picker";
-import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -14,8 +11,10 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Typography } from "../../../components/ui/typography";
-import { ensureProfile } from "../../../lib/profile";
+import { registerForPushNotificationsAsync } from "../../../lib/push-notifications";
 import { supabase } from "../../../lib/supabase";
+
+const profileId = process.env.EXPO_PUBLIC_PROFILE_ID;
 
 type ProfileRow = {
   id: string;
@@ -26,7 +25,6 @@ type ProfileRow = {
 };
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -34,166 +32,127 @@ export default function SettingsScreen() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     const loadProfile = async () => {
-      try {
-        const profileId = await ensureProfile();
-
-        if (!profileId) {
-          Alert.alert(
-            "Missing profile id",
-            "Please sign in again.",
-          );
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, username, display_name, bio, avatar_storage_id")
-          .eq("id", profileId)
-          .single<ProfileRow>();
-
-        if (error) {
-          Alert.alert("Error", error.message);
-          return;
-        }
-
-        setDisplayName(data.display_name ?? "");
-        setUsername(data.username ?? "");
-        setBio(data.bio ?? "");
-        setAvatarStorageId(data.avatar_storage_id ?? null);
-
-        if (data.avatar_storage_id) {
-          const { data: publicData } = supabase.storage
-            .from("avatars")
-            .getPublicUrl(data.avatar_storage_id);
-
-          setAvatarUrl(publicData.publicUrl);
-        } else {
-          setAvatarUrl(null);
-        }
-      } catch (error: any) {
-        Alert.alert("Error", error?.message ?? String(error));
-      } finally {
+      if (!profileId) {
+        Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
         setLoading(false);
+        return;
       }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, username, display_name, bio, avatar_storage_id")
+        .eq("id", profileId)
+        .single<ProfileRow>();
+
+      if (error) {
+        Alert.alert("Error", error.message);
+        setLoading(false);
+        return;
+      }
+
+      setDisplayName(data.display_name ?? "");
+      setUsername(data.username ?? "");
+      setBio(data.bio ?? "");
+      setAvatarStorageId(data.avatar_storage_id ?? null);
+
+      if (data.avatar_storage_id) {
+        const { data: publicData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(data.avatar_storage_id);
+
+        setAvatarUrl(publicData.publicUrl);
+      } else {
+        setAvatarUrl(null);
+      }
+
+      setLoading(false);
     };
 
     void loadProfile();
   }, []);
 
   const pickAvatar = async () => {
-    try {
-      const profileId = await ensureProfile();
-
-      if (!profileId) {
-        Alert.alert(
-          "Missing profile id",
-          "Please sign in again.",
-        );
-        return;
-      }
-
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          "Permission required",
-          "Allow photo library access to choose an avatar.",
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
-
-      if (result.canceled) return;
-
-      const asset = result.assets[0];
-      if (!asset?.uri) return;
-
-      setUploadingAvatar(true);
-
-      const extension =
-        asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
-
-      const filePath = `${profileId}/${Date.now()}.${extension}`;
-
-      const base64 = await FileSystem.readAsStringAsync(asset.uri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, decode(base64), {
-          contentType: asset.mimeType ?? "image/jpeg",
-          upsert: true,
-        });
-
-      if (uploadError) {
-        Alert.alert("Upload failed", uploadError.message);
-        return;
-      }
-
-      const { data } = supabase.storage.from("avatars").getPublicUrl(filePath);
-
-      setAvatarStorageId(filePath);
-      setAvatarUrl(data.publicUrl);
-      Alert.alert("Success", "Avatar updated successfully.");
-    } catch (error: any) {
-      Alert.alert("Avatar error", error?.message ?? String(error));
-    } finally {
-      setUploadingAvatar(false);
+    if (!profileId) {
+      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+      return;
     }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        "Permission required",
+        "Allow photo library access to choose an avatar."
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets[0];
+    if (!asset?.uri) return;
+
+    const extension = asset.uri.split(".").pop()?.split("?")[0] ?? "jpg";
+    const filePath = `${profileId}/${Date.now()}.${extension}`;
+
+    const formData = new FormData();
+
+    formData.append("file", {
+      uri: asset.uri,
+      name: `avatar.${extension}`,
+      type: asset.mimeType ?? "image/jpeg",
+    } as any);
+
+    Alert.alert(
+      "Avatar Selected",
+      "Image picker is working. Upload implementation will be added next."
+    );
+
+    return;
+
   };
 
   const saveProfile = async () => {
-    try {
-      const profileId = await ensureProfile();
-
-      if (!profileId) {
-        Alert.alert(
-          "Missing profile id",
-          "Please sign in again.",
-        );
-        return;
-      }
-
-      if (!displayName.trim()) {
-        Alert.alert("Missing display name", "Display name cannot be empty.");
-        return;
-      }
-
-      setSaving(true);
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          display_name: displayName.trim(),
-          username: username.trim() || null,
-          bio: bio.trim() || null,
-          avatar_storage_id: avatarStorageId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", profileId);
-
-      if (error) {
-        Alert.alert("Save failed", error.message);
-        return;
-      }
-
-      Alert.alert("Saved", "Profile updated successfully.");
-    } catch (error: any) {
-      Alert.alert("Error", error?.message ?? String(error));
-    } finally {
-      setSaving(false);
+    if (!profileId) {
+      Alert.alert("Missing profile id", "Set EXPO_PUBLIC_PROFILE_ID in .env.local");
+      return;
     }
+
+    if (!displayName.trim()) {
+      Alert.alert("Missing display name", "Display name cannot be empty.");
+      return;
+    }
+
+    setSaving(true);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        display_name: displayName.trim(),
+        username: username.trim() || null,
+        bio: bio.trim() || null,
+        avatar_storage_id: avatarStorageId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", profileId);
+
+    setSaving(false);
+
+    if (error) {
+      Alert.alert("Save failed", error.message);
+      return;
+    }
+
+    Alert.alert("Saved", "Profile updated successfully.");
   };
 
   const handleSignOut = async () => {
@@ -204,7 +163,19 @@ export default function SettingsScreen() {
       return;
     }
 
-    router.replace("/(auth)/sign-in");
+    Alert.alert("Signed out", "You have been signed out.");
+  };
+
+  const testPushNotifications = async () => {
+    try {
+      await registerForPushNotificationsAsync();
+      Alert.alert(
+        "Push setup",
+        "If permissions were granted, the Expo push token should appear in the console."
+      );
+    } catch (error: any) {
+      Alert.alert("Push setup failed", error?.message ?? String(error));
+    }
   };
 
   if (loading) {
@@ -227,9 +198,7 @@ export default function SettingsScreen() {
           <Image source={{ uri: avatarUrl }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Typography variant="body">
-              {uploadingAvatar ? "Uploading..." : "Tap to add avatar"}
-            </Typography>
+            <Typography variant="body">Tap to add avatar</Typography>
           </View>
         )}
       </Pressable>
@@ -267,6 +236,12 @@ export default function SettingsScreen() {
       <Button
         title={saving ? "Saving..." : "Save changes"}
         onPress={saveProfile}
+      />
+
+      <Button
+        title="Test Push Notifications"
+        variant="secondary"
+        onPress={testPushNotifications}
       />
 
       <View style={styles.spacer} />
@@ -309,7 +284,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#F8FAFC",
-    padding: 8,
   },
   bioInput: {
     height: 100,

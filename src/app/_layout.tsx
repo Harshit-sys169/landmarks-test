@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
+import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
-import { ensureProfile } from "../../lib/profile";
+import { registerForPushNotificationsAsync } from "../../lib/push-notifications";
 
 export default function RootLayout() {
   const router = useRouter();
@@ -9,17 +9,22 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    void registerForPushNotificationsAsync();
+  }, []);
+
+  useEffect(() => {
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       const session = data.session;
-      const inAuthGroup = segments[0] === "(auth)";
+      const segment = segments[0];
+      const inAuthGroup = segment === "(auth)";
+      const inOnboarding = segment === "onboarding";
 
-      if (!session && !inAuthGroup) {
-        router.replace("/(auth)/sign-in");
+      if (!session && !inAuthGroup && !inOnboarding) {
+        router.replace("/onboarding");
       }
 
-      if (session && inAuthGroup) {
-        await ensureProfile();
+      if (session && (inAuthGroup || inOnboarding)) {
         router.replace("/(tabs)");
       }
 
@@ -31,5 +36,16 @@ export default function RootLayout() {
 
   if (loading) return null;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="park-summary"
+        options={{
+          presentation: "modal",
+          gestureEnabled: true,
+          headerShown: false,
+        }}
+      />
+    </Stack>
+  );
 }
